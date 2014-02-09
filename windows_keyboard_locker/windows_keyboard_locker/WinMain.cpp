@@ -20,6 +20,7 @@ enum
 
 
 HHOOK KBhook = NULL;//钩子句柄
+HINSTANCE hInst;
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam);//键盘钩子回调函数
@@ -47,7 +48,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	NOTIFYICONDATA IconData;
 	WNDCLASS wndclass;
 	static TCHAR szAppName[] = { L"Keyboard Lock" };
-
+	hInst = hInstance;
 	//初始化窗口
 	wndclass.style = CS_HREDRAW | CS_VREDRAW;
 	wndclass.lpfnWndProc = WndProc;
@@ -69,7 +70,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	IconData.cbSize = sizeof(NOTIFYICONDATA);
 	IconData.hWnd = hwnd;
 	IconData.uID = (UINT)hInstance;
-	IconData.hIcon = LoadIcon(0, MAKEINTRESOURCE(IDI_INFORMATION));
+	//IconData.hIcon = LoadIcon(0, MAKEINTRESOURCE(IDI_ICON1));
+	IconData.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
 	IconData.uFlags = NIF_MESSAGE + NIF_ICON + NIF_TIP;
 	IconData.uCallbackMessage = WM_TRAYICON;
 	StringCchCopy(IconData.szTip, ARRAYSIZE(IconData.szTip), L"点击设置");
@@ -222,36 +224,35 @@ int DisableKeyboardCapture()
 
 void TrayMessage(HWND hwnd, int nFlag)
 {
-	NOTIFYICONDATA nid = {};
-	nid.cbSize = sizeof(NOTIFYICONDATA);
-	nid.hWnd = hwnd;
-	nid.uID = (UINT)GetModuleHandle(NULL);
-	nid.uFlags = NIF_INFO | NIF_ICON;
-	nid.dwInfoFlags = NIIF_INFO;
-	nid.uTimeout = 1000;
-	nid.hIcon = LoadIcon(0, MAKEINTRESOURCE(IDI_INFORMATION));
-
+	NOTIFYICONDATA nib = {};
+	nib.cbSize = sizeof(NOTIFYICONDATA);
+	nib.hWnd = hwnd;
+	nib.uID = (UINT)GetModuleHandle(NULL);
+	nib.uFlags = NIF_INFO | NIF_ICON;
+	nib.dwInfoFlags = NIIF_INFO;
+	nib.uTimeout = 1000;
+	nib.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICON1));
 	//StringCchCopy(nid.szTip, ARRAYSIZE(nid.szTip), L"Windows KeyBoard Locker");
-	/*wsprintf(nid.szInfo, szText);*/
+	//wsprintf(nid.szInfo, szText);
 	switch (nFlag)
 	{
 	case 0:
-		StringCchCopy(nid.szInfo, ARRAYSIZE(nid.szInfo),NOTI_UNLOCKED);
+		StringCchCopy(nib.szInfo, ARRAYSIZE(nib.szInfo), NOTI_UNLOCKED);
 		break;
 	case 1:
-		StringCchCopy(nid.szInfo, ARRAYSIZE(nid.szInfo), NOTI_LOCKED);
+		StringCchCopy(nib.szInfo, ARRAYSIZE(nib.szInfo), NOTI_LOCKED);
 		break;
 	case 2:
-		StringCchCopy(nid.szInfo, ARRAYSIZE(nid.szInfo), NOTI_UNLOCK_FAILED);
+		StringCchCopy(nib.szInfo, ARRAYSIZE(nib.szInfo), NOTI_UNLOCK_FAILED);
 		break;
 	case 3:
-		StringCchCopy(nid.szInfo, ARRAYSIZE(nid.szInfo), NOTI_LOCK_FAILED);
+		StringCchCopy(nib.szInfo, ARRAYSIZE(nib.szInfo), NOTI_LOCK_FAILED);
 		break;
 	default:
 		break;
 	}
 	/*strcpy(nid.szInfoTitle, (TCHAR )"键盘锁");*/
-	Shell_NotifyIcon(NIM_MODIFY, &nid);
+	Shell_NotifyIcon(NIM_MODIFY, &nib);
 }
 
 
