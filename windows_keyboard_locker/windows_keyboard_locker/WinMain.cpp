@@ -1,4 +1,10 @@
 #define _WIN32_IE 0x0500
+
+#define NOTI_LOCKED        L"键盘已锁定"
+#define NOTI_UNLOCKED      L"键盘已解锁"
+#define NOTI_LOCK_FAILED   L"键盘锁定失败"
+#define NOTI_UNLOCK_FAILED L"键盘解锁失败"
+
 #include <Windows.h>
 #include <string>
 #include <strsafe.h>
@@ -18,7 +24,7 @@ HHOOK KBhook = NULL;//钩子句柄
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam);//键盘钩子回调函数
 
-void TrayMessage(HWND hwnd, LPCTSTR szText);//显示托盘气泡信息
+void TrayMessage(HWND hwnd, int nFlag);//显示托盘气泡信息
 void DestroyTrayIcon(HWND hwnd);//删除托盘图标
 void CreateTrayMenu(HWND hwnd);//建立托盘菜单
 BOOL isValidMessage(WORD message);          //验证信息的合法性
@@ -36,6 +42,7 @@ void OnUnlock(HWND hwnd);
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow)
 {
 	HWND hwnd;
+	HICON Icon;
 	MSG msg;
 	NOTIFYICONDATA IconData;
 	WNDCLASS wndclass;
@@ -59,14 +66,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
 	//这里之后不需要显示窗口，新建托盘图标，操作全部在托盘图标上完成
 	//Warning: HWND 和 HINSTANCE 不对的话，就会有问题
-
 	IconData.cbSize = sizeof(NOTIFYICONDATA);
 	IconData.hWnd = hwnd;
 	IconData.uID = (UINT)hInstance;
 	IconData.hIcon = LoadIcon(0, MAKEINTRESOURCE(IDI_INFORMATION));
 	IconData.uFlags = NIF_MESSAGE + NIF_ICON + NIF_TIP;
 	IconData.uCallbackMessage = WM_TRAYICON;
-
+	StringCchCopy(IconData.szTip, ARRAYSIZE(IconData.szTip), L"点击设置");
 	//strcpy(IconData.szTip, "键盘锁");
 
 	Shell_NotifyIcon(NIM_ADD, &IconData);
@@ -214,7 +220,7 @@ int DisableKeyboardCapture()
 }
 
 
-void TrayMessage(HWND hwnd, LPCTSTR szText)
+void TrayMessage(HWND hwnd, int nFlag)
 {
 	NOTIFYICONDATA nid = {};
 	nid.cbSize = sizeof(NOTIFYICONDATA);
@@ -227,9 +233,24 @@ void TrayMessage(HWND hwnd, LPCTSTR szText)
 
 	//StringCchCopy(nid.szTip, ARRAYSIZE(nid.szTip), L"Windows KeyBoard Locker");
 	/*wsprintf(nid.szInfo, szText);*/
-	StringCchCopy(nid.szInfo, ARRAYSIZE(nid.szInfo), szText);
+	switch (nFlag)
+	{
+	case 0:
+		StringCchCopy(nid.szInfo, ARRAYSIZE(nid.szInfo),NOTI_UNLOCKED);
+		break;
+	case 1:
+		StringCchCopy(nid.szInfo, ARRAYSIZE(nid.szInfo), NOTI_LOCKED);
+		break;
+	case 2:
+		StringCchCopy(nid.szInfo, ARRAYSIZE(nid.szInfo), NOTI_UNLOCK_FAILED);
+		break;
+	case 3:
+		StringCchCopy(nid.szInfo, ARRAYSIZE(nid.szInfo), NOTI_LOCK_FAILED);
+		break;
+	default:
+		break;
+	}
 	/*strcpy(nid.szInfoTitle, (TCHAR )"键盘锁");*/
-	
 	Shell_NotifyIcon(NIM_MODIFY, &nid);
 }
 
@@ -249,10 +270,10 @@ void CreateTrayMenu(HWND hwnd)
 {
 	HMENU hMenu;
 	hMenu = CreatePopupMenu();
-	AppendMenu(hMenu, MF_STRING, ID_LOCK, L"Lock KeyBoard");
-	AppendMenu(hMenu, MF_STRING, ID_UNLOCK, L"Unlock KeyBoard");
+	AppendMenu(hMenu, MF_STRING, ID_LOCK, L"锁定键盘");
+	AppendMenu(hMenu, MF_STRING, ID_UNLOCK, L"解锁键盘");
 	AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
-	AppendMenu(hMenu, MF_STRING, ID_EXIT, L"Exit");
+	AppendMenu(hMenu, MF_STRING, ID_EXIT, L"退出");
 
 	POINT pt;
 	GetCursorPos(&pt);
@@ -266,13 +287,13 @@ void OnUnlock(HWND hwnd)
 	switch (DisableKeyboardCapture())
 	{
 	case 0:
-		TrayMessage(hwnd, (LPCTSTR)"KeyBoard hasn't been locked");
+		TrayMessage(hwnd, 3);
 		break;
 	case 1:
-		TrayMessage(hwnd, (LPCTSTR)"KeyBoard has been unlocked");
+		TrayMessage(hwnd, 0);
 		break;
 	case -1:
-		TrayMessage(hwnd, (LPCTSTR)"KeyBoard unlock failed");
+		TrayMessage(hwnd, 2);
 		break;
 	}
 }
@@ -283,11 +304,11 @@ void OnLock(HWND hwnd)
 	switch (EnableKeyboardCapture())
 	{
 	case 1:
-		TrayMessage(hwnd, (LPCTSTR)"");
+		TrayMessage(hwnd, 1);  //KeyBoard lock Success
 		break;
 
 	case -1:
-		TrayMessage(hwnd, (LPCTSTR)"KeyBoard lock failed");
+		TrayMessage(hwnd, 3);  //KeyBoard lock failed
 		break;
 	}
 }
